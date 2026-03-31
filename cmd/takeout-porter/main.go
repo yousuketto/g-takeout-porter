@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"maps"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func extractTakeoutRelativePath(path string) ([]string, error) {
@@ -34,13 +36,13 @@ type FileMetadataJson struct {
 	} `json:photoTakenTime`
 }
 
-type TargetFileInfo struct {
+type SourceFileInfo struct {
 	RelativePath string
 	Timestamp    int64
 	Key          string
 }
 
-func analyzeSourceDir(sourceDir string) ([]TargetFileInfo, error) {
+func analyzeSourceDir(sourceDir string) ([]SourceFileInfo, error) {
 	timestampMap := make(map[string]int64)
 	pathMap := make(map[string]string)
 	err := filepath.WalkDir(sourceDir, func(path string, entry os.DirEntry, err error) error {
@@ -97,11 +99,11 @@ func analyzeSourceDir(sourceDir string) ([]TargetFileInfo, error) {
 		return nil, err
 	}
 
-	targetFileInfos := make([]TargetFileInfo, 0, len(pathMap))
+	sourceFileInfos := make([]SourceFileInfo, 0, len(pathMap))
 	for k, relativePath := range pathMap {
 		if timestamp, ok := timestampMap[k]; ok {
-			info := TargetFileInfo{relativePath, timestamp, k}
-			targetFileInfos = append(targetFileInfos, info)
+			info := SourceFileInfo{relativePath, timestamp, k}
+			sourceFileInfos = append(sourceFileInfos, info)
 			delete(timestampMap, k)
 		} else {
 			return nil, fmt.Errorf("Not found metadata file for '%s'", relativePath)
@@ -111,7 +113,43 @@ func analyzeSourceDir(sourceDir string) ([]TargetFileInfo, error) {
 		return nil, fmt.Errorf("Not found real files for '%s'", strings.Join(slices.Collect(maps.Keys(timestampMap)), ", "))
 	}
 
-	return targetFileInfos, nil
+	return sourceFileInfos, nil
+}
+
+func copyFile(src, dst string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	d, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	if _, err := io.Copy(d, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func copyToDestDir(sourceFileInfos []SourceFileInfo, destDir string) error {
+	for _, info := range sourceFileInfos {
+		sourcePath := info.RelativePath
+
+		timestamp := time.Unix(info.Timestamp, 0)
+
+		targetPath := filepath.Join(destDir, timestamp.Format("200601"), filepath.Base(info.RelativePath))
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
+
+		err := copyFile(sourcePath, targetPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -120,14 +158,19 @@ func main() {
 		os.Exit(1)
 	}
 	sourceDir := filepath.Clean(os.Args[1])
-	// destDir := filepath.Clean(os.Args[2])
+	destDir := filepath.Clean(os.Args[2])
 
-	targetFileInfos, err := analyzeSourceDir(sourceDir)
+	sourceFileInfos, err := analyzeSourceDir(sourceDir)
 	if err != nil {
 		log.Fatalf("Fail to analyze data structure in source directory: %v", err)
 	}
 
-	for _, info := range targetFileInfos {
+	if err := copyToDestDir(sourceFileInfos, destDir); err != nil {
+		log.Fatalf("Fail to copy files: %v", err)
+	}
+
+	for _, info := range sourceFileInfos {
 		fmt.Printf("> %v\n", info)
 	}
+
 }
