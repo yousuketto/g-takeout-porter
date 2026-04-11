@@ -32,6 +32,8 @@ func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.Ana
 	duplicatedFiles := make([]string, 0)
 	notFoundMetadataPaths := make([]string, 0)
 
+	fallbackTimestampMap := make(map[string]int64)
+
 	err := filepath.WalkDir(dirPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -72,6 +74,7 @@ func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.Ana
 				duplicatedMetadata = append(duplicatedMetadata, key)
 			} else {
 				timestampMap[key] = ts
+				fallbackTimestampMap[removeExt(key)] = ts
 			}
 		} else {
 			takeoutRelativePath, err := extractTakeoutRelativePath(path)
@@ -96,11 +99,16 @@ func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.Ana
 	mediaMetadataSlice := make([]domain.MediaMetadata, 0, len(relativePathMap))
 	for k, relativePath := range relativePathMap {
 		if timestamp, ok := timestampMap[k]; ok {
-			// TODO Get RealTimestamp from exiftool
-			mediaMetadataSlice = append(mediaMetadataSlice, domain.MediaMetadata{relativePath, timestamp, timestamp})
+			// TODO Get RealTimestamp from exif
+			mediaMetadataSlice = append(mediaMetadataSlice, domain.MediaMetadata{relativePath, timestamp, timestamp, false})
 			delete(timestampMap, k)
 		} else {
-			notFoundMetadataPaths = append(notFoundMetadataPaths, k)
+			if timestamp, ok := fallbackTimestampMap[removeExt(k)]; ok {
+				// TODO Get RealTimestamp from exif
+				mediaMetadataSlice = append(mediaMetadataSlice, domain.MediaMetadata{relativePath, timestamp, timestamp, true})
+			} else {
+				notFoundMetadataPaths = append(notFoundMetadataPaths, k)
+			}
 		}
 	}
 
@@ -131,4 +139,8 @@ func extractTakeoutRelativePath(path string) ([]string, error) {
 		return nil, fmt.Errorf("The path (%s) doesn't have Takeout.", path)
 	}
 	return parts[index:], nil
+}
+
+func removeExt(path string) string {
+	return strings.TrimSuffix(path, filepath.Ext(path))
 }

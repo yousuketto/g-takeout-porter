@@ -1,11 +1,12 @@
 package infra
 
 import (
+	"cmp"
 	"encoding/json"
+	"github.com/yousuketto/g-takeout-porter/internal/domain"
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"testing"
 )
 
@@ -77,6 +78,10 @@ func TestTakeoutMetadataRepo_AnalyzeAllMetadata_validStructure(t *testing.T) {
 		filepath.Join("dir1", "Takeout", "Google フォト", "2014", "photo4.jpg"):  []byte(""),
 		filepath.Join("dir2", "Takeout", "Google フォト", "2014", "photo4.jpg"):  []byte(""),
 		filepath.Join("dir3", "Takeout", "Google フォト", "2014", "photo4.json"): makeJson("photo4.jpg", "1397367115"),
+		// one media file and one fallbacked file
+		filepath.Join("dir2", "Takeout", "Google フォト", "2014", "photo5.jpg"):  []byte(""),
+		filepath.Join("dir2", "Takeout", "Google フォト", "2014", "photo5"):      []byte(""),
+		filepath.Join("dir3", "Takeout", "Google フォト", "2014", "photo5.json"): makeJson("photo5.jpg", "1397367116"),
 	}
 	for path, content := range files {
 		fullPath := filepath.Join(temp, path)
@@ -94,12 +99,15 @@ func TestTakeoutMetadataRepo_AnalyzeAllMetadata_validStructure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AnalyzeAllMetadata returned error: %v", err)
 	}
-	if len(result.Medias) != 4 {
+	if len(result.Medias) != 6 {
 		t.Fatalf("AnalyzeAllMetadata returned %d medias, expected %d", len(result.Medias), 4)
 		return
 	}
-	sort.Slice(result.Medias, func(i, j int) bool {
-		return result.Medias[i].Timestamp < result.Medias[j].Timestamp
+	slices.SortFunc(result.Medias, func(a, b domain.MediaMetadata) int {
+		if n := cmp.Compare(a.Timestamp, b.Timestamp); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.RelativePath, b.RelativePath)
 	})
 	// Check result.Medias
 	wantPath := filepath.Join(temp, "dir1", "Takeout", "Google フォト", "2014", "photo2.jpg")
@@ -109,26 +117,59 @@ func TestTakeoutMetadataRepo_AnalyzeAllMetadata_validStructure(t *testing.T) {
 	if result.Medias[0].Timestamp != 1397367111 {
 		t.Errorf("Expected timestamp %d, got %d", 1397367111, result.Medias[0].Timestamp)
 	}
+	if result.Medias[0].IsFallbackedTimestamp != false {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", false, result.Medias[0].IsFallbackedTimestamp)
+	}
 	wantPath = filepath.Join(temp, "dir1", "Takeout", "Google フォト", "2014", "photo3.jpg")
 	if result.Medias[1].RelativePath != wantPath {
-		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[0].RelativePath)
+		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[1].RelativePath)
 	}
 	if result.Medias[1].Timestamp != 1397367113 {
-		t.Errorf("Expected timestamp %d, got %d", 1397367113, result.Medias[0].Timestamp)
+		t.Errorf("Expected timestamp %d, got %d", 1397367113, result.Medias[1].Timestamp)
+	}
+	if result.Medias[1].IsFallbackedTimestamp != false {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", false, result.Medias[1].IsFallbackedTimestamp)
 	}
 	wantPath = filepath.Join(temp, "dir1", "Takeout", "Google フォト", "2014", "photo1.jpg")
 	if result.Medias[2].RelativePath != wantPath {
-		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[0].RelativePath)
+		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[2].RelativePath)
 	}
 	if result.Medias[2].Timestamp != 1397367114 {
-		t.Errorf("Expected timestamp %d, got %d", 1397367114, result.Medias[0].Timestamp)
+		t.Errorf("Expected timestamp %d, got %d", 1397367114, result.Medias[2].Timestamp)
+	}
+	if result.Medias[2].IsFallbackedTimestamp != false {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", false, result.Medias[2].IsFallbackedTimestamp)
 	}
 	wantPath = filepath.Join(temp, "dir1", "Takeout", "Google フォト", "2014", "photo4.jpg")
 	if result.Medias[3].RelativePath != wantPath {
-		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[0].RelativePath)
+		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[3].RelativePath)
 	}
 	if result.Medias[3].Timestamp != 1397367115 {
-		t.Errorf("Expected timestamp %d, got %d", 1397367115, result.Medias[0].Timestamp)
+		t.Errorf("Expected timestamp %d, got %d", 1397367115, result.Medias[3].Timestamp)
+	}
+	if result.Medias[3].IsFallbackedTimestamp != false {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", false, result.Medias[3].IsFallbackedTimestamp)
+	}
+
+	wantPath = filepath.Join(temp, "dir2", "Takeout", "Google フォト", "2014", "photo5")
+	if result.Medias[4].RelativePath != wantPath {
+		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[4].RelativePath)
+	}
+	if result.Medias[4].Timestamp != 1397367116 {
+		t.Errorf("Expected timestamp %d, got %d", 13973671156, result.Medias[4].Timestamp)
+	}
+	if result.Medias[4].IsFallbackedTimestamp != true {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", true, result.Medias[4].IsFallbackedTimestamp)
+	}
+	wantPath = filepath.Join(temp, "dir2", "Takeout", "Google フォト", "2014", "photo5.jpg")
+	if result.Medias[5].RelativePath != wantPath {
+		t.Errorf("Expected RelativePath %s, got %s", wantPath, result.Medias[5].RelativePath)
+	}
+	if result.Medias[5].Timestamp != 1397367116 {
+		t.Errorf("Expected timestamp %d, got %d", 1397367116, result.Medias[5].Timestamp)
+	}
+	if result.Medias[5].IsFallbackedTimestamp != false {
+		t.Errorf("Expected IsFallbackedTimestamp %v, got %v", false, result.Medias[5].IsFallbackedTimestamp)
 	}
 
 	// Check result.Unexpected

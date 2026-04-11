@@ -1,9 +1,10 @@
 package domain
 
 type MediaMetadata struct {
-	RelativePath  string
-	Timestamp     int64
-	RealTimestamp int64
+	RelativePath          string
+	Timestamp             int64
+	RealTimestamp         int64
+	IsFallbackedTimestamp bool
 }
 
 type UnexpectedStruct struct {
