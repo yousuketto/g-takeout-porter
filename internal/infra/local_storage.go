@@ -28,12 +28,17 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 
 	results := make([]domain.CopiedResult, 0, len(sourceMetadata))
 	for i, metadata := range sourceMetadata {
-		err := copyFile(metadata.RelativePath, destPaths[i])
+		path := destPaths[i]
+		err := copyFile(metadata.RelativePath, path)
 		if err != nil {
-			fmt.Printf("Fail to copy '%s' to '%s': %v\n", metadata.RelativePath, destPaths[i], err)
+			fmt.Printf("Fail to copy '%s' to '%s': %v\n", metadata.RelativePath, path, err)
 			results = append(results, domain.CopiedResult{false, metadata})
 		} else {
 			results = append(results, domain.CopiedResult{true, metadata})
+		}
+		t := time.Unix(metadata.Timestamp, 0)
+		if err := os.Chtimes(path, t, t); err != nil {
+			return nil, err
 		}
 	}
 	return results, nil
