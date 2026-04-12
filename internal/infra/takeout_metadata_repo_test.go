@@ -3,6 +3,8 @@ package infra
 import (
 	"cmp"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/yousuketto/g-takeout-porter/internal/domain"
 	"os"
 	"path/filepath"
@@ -188,6 +190,93 @@ func TestTakeoutMetadataRepo_AnalyzeAllMetadata_validStructure(t *testing.T) {
 	wantPath = filepath.Join("Takeout", "Google フォト", "2014", "no_media.jpg")
 	if len(result.Unexpected.NotFoundMedia) != 1 || result.Unexpected.NotFoundMedia[0] != wantPath {
 		t.Errorf("Expected not found media file for %s, but %v", wantPath, result.Unexpected.NotFoundMedia)
+	}
+}
+
+func TestTakeoutMetadataRepo_AnalyzeAllMetadata_inValidJson(t *testing.T) {
+	temp := t.TempDir()
+	files := map[string][]byte{
+		// media and metadata in dir1
+		filepath.Join("dir1", "Takeout", "Google フォト", "2014", "photo1.jpg"):  []byte(""),
+		filepath.Join("dir1", "Takeout", "Google フォト", "2014", "photo1.json"): append(makeJson("photo1.jpg", "1397367114"), []byte(" invalid")...),
+	}
+	for path, content := range files {
+		fullPath := filepath.Join(temp, path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("Failed to create dir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, content, 0644); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+
+	repo := NewTakeoutMetadataRepo()
+	result, err := repo.AnalyzeAllMetadata(temp)
+
+	if err == nil {
+		t.Fatalf("AnalyzeAllMetadata returned non error, expected json error: %v", result)
+	}
+	var syntaxErr *json.SyntaxError
+	if !errors.As(err, &syntaxErr) {
+		t.Fatalf("Expected error type json.SyntaxError: %v, %T", err, err)
+	}
+}
+
+func TestTakeoutMetadataRepo_AnalyzeAllMetadata_inValidTypeJson(t *testing.T) {
+	temp := t.TempDir()
+	files := map[string][]byte{
+		// media and metadata in dir1
+		filepath.Join("dir1", "Takeout", "Google フォト", "2014", "photo1.jpg"):  []byte(""),
+		filepath.Join("dir1", "Takeout", "Google フォト", "2014", "photo1.json"): []byte("{\"title\":\"photo1.jpg\",\"photoTakenTime\":{\"timestamp\":1}}"),
+	}
+	for path, content := range files {
+		fullPath := filepath.Join(temp, path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("Failed to create dir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, content, 0644); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+
+	repo := NewTakeoutMetadataRepo()
+	result, err := repo.AnalyzeAllMetadata(temp)
+
+	if err == nil {
+		t.Fatalf("AnalyzeAllMetadata returned non error, expected json error: %v", result)
+	}
+	var typeErr *json.UnmarshalTypeError
+	if !errors.As(err, &typeErr) {
+		t.Fatalf("Expected error type json.UnmarshalTypeError: %v, %T", err, err)
+	}
+}
+
+func TestTakeoutMetadataRepo_AnalyzeAllMetadata_notFoundTakeoutDirectory(t *testing.T) {
+	temp := t.TempDir()
+	files := map[string][]byte{
+		// media and metadata in dir1
+		filepath.Join("dir1", "Takeouts", "Google フォト", "2014", "photo1.jpg"):  []byte(""),
+	}
+	for path, content := range files {
+		fullPath := filepath.Join(temp, path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("Failed to create dir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, content, 0644); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+
+	repo := NewTakeoutMetadataRepo()
+	result, err := repo.AnalyzeAllMetadata(temp)
+
+	if err == nil {
+		t.Fatalf("AnalyzeAllMetadata returned non error, expected an error: %v", result)
+	}
+	message := err.Error()
+	wantMessage := fmt.Sprintf("The path (%s) doesn't have Takeout.", filepath.Join(temp, "dir1", "Takeouts", "Google フォト", "2014", "photo1.jpg"))
+	if message != wantMessage {
+		t.Fatalf("Expected error message `%s`, got `%s`", wantMessage, message)
 	}
 }
 

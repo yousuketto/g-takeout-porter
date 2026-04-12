@@ -50,7 +50,7 @@ func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.Ana
 
 			var m metadataJson
 			if err := json.Unmarshal(data, &m); err != nil {
-				return fmt.Errorf("Unexpected JSON (%s): %v", path, err)
+				return fmt.Errorf("Unexpected JSON (%s): %w", path, err)
 			}
 			if m.Title == "" {
 				return fmt.Errorf("Not found tile in JSON (%s)", path)
@@ -66,7 +66,7 @@ func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.Ana
 
 			ts, err := strconv.ParseInt(m.PhotoTakenTime.Timestamp, 10, 64)
 			if err != nil {
-				return fmt.Errorf("Fail to conver %s timestamp value: %v", m.Title, err)
+				return fmt.Errorf("Fail to conver %s timestamp value: %w", m.Title, err)
 			}
 
 			key := filepath.Join(append(takeoutRelativePath[:len(takeoutRelativePath)-1], m.Title)...)
