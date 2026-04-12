@@ -20,25 +20,25 @@ func TestExtractTakeoutRelativePath(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "Normal: The path contains one 'Takeout' directory",
+			name:      "Positive: The path contains one 'Takeout' directory",
 			input:     filepath.Join("some", "dir", "Takeout", "Google フォト", "photo.jpg"),
 			want:      []string{"Takeout", "Google フォト", "photo.jpg"},
 			wantError: false,
 		},
 		{
-			name:      "Normal: The path contains two or more 'Takeout' directories",
+			name:      "Positive: The path contains two or more 'Takeout' directories",
 			input:     filepath.Join("first", "Takeout", "second", "Takeout", "directory", "photo.img"),
 			want:      []string{"Takeout", "directory", "photo.img"},
 			wantError: false,
 		},
 		{
-			name:      "Abnormal: The path doesn't contain a 'Takeout' directory",
+			name:      "Negative: The path doesn't contain a 'Takeout' directory",
 			input:     filepath.Join("some", "dir", "Takeouts", "Google フォト", "photo.jpg"),
 			want:      nil,
 			wantError: true,
 		},
 		{
-			name:      "Abnormal: The path doesn't contain a 'Takeout' directory, but contains a 'Takeout' file",
+			name:      "Negative: The path doesn't contain a 'Takeout' directory, but contains a 'Takeout' file",
 			input:     filepath.Join("some", "dir", "Takeouts", "Google フォト", "photo.jpg"),
 			want:      nil,
 			wantError: true,
