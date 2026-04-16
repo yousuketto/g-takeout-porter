@@ -21,37 +21,8 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 		return err
 	}
 
-	if result.Unexpected != nil {
-		messages := make([]string, 0)
-		if result.Unexpected.DuplicatedMetadata != nil && len(result.Unexpected.DuplicatedMetadata) > 0 {
-			m := "Duplicated metadata are found.\n"
-			for _, path := range result.Unexpected.DuplicatedMetadata {
-				m += fmt.Sprintf("- %s\n", path)
-			}
-			messages = append(messages, m)
-		}
-		if result.Unexpected.DuplicatedMedia != nil && len(result.Unexpected.DuplicatedMedia) > 0 {
-			m := "Duplicated medias are found.\n"
-			for _, path := range result.Unexpected.DuplicatedMedia {
-				m += fmt.Sprintf("- %s\n", path)
-			}
-			messages = append(messages, m)
-		}
-		if result.Unexpected.NotFoundMetadata != nil && len(result.Unexpected.NotFoundMetadata) > 0 {
-			m := "Not found metadata.\n"
-			for _, path := range result.Unexpected.NotFoundMetadata {
-				m += fmt.Sprintf("- %s\n", path)
-			}
-			messages = append(messages, m)
-		}
-		if result.Unexpected.NotFoundMedia != nil && len(result.Unexpected.NotFoundMedia) > 0 {
-			m := "Not found media file.\n"
-			for _, path := range result.Unexpected.NotFoundMedia {
-				m += fmt.Sprintf("- %s\n", path)
-			}
-			messages = append(messages, m)
-		}
-		return fmt.Errorf("Unexpected analysis result\n%s", strings.Join(messages, "\n\n"))
+	if err := convertError(result.Unexpected); err != nil {
+		return err
 	}
 
 	copiedResults, err := porter.backupStorage.Copy(result.Medias, destDir)
@@ -69,4 +40,40 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 	}
 
 	return nil
+}
+
+func convertError(unexpected *domain.UnexpectedStruct) error {
+	if unexpected == nil {
+		return nil
+	}
+	messages := make([]string, 0)
+	if unexpected.DuplicatedMetadata != nil && len(unexpected.DuplicatedMetadata) > 0 {
+		m := "Duplicated metadata are found.\n"
+		for _, path := range unexpected.DuplicatedMetadata {
+			m += fmt.Sprintf("- %s\n", path)
+		}
+		messages = append(messages, m)
+	}
+	if unexpected.DuplicatedMedia != nil && len(unexpected.DuplicatedMedia) > 0 {
+		m := "Duplicated medias are found.\n"
+		for _, path := range unexpected.DuplicatedMedia {
+			m += fmt.Sprintf("- %s\n", path)
+		}
+		messages = append(messages, m)
+	}
+	if unexpected.NotFoundMetadata != nil && len(unexpected.NotFoundMetadata) > 0 {
+		m := "Not found metadata.\n"
+		for _, path := range unexpected.NotFoundMetadata {
+			m += fmt.Sprintf("- %s\n", path)
+		}
+		messages = append(messages, m)
+	}
+	if unexpected.NotFoundMedia != nil && len(unexpected.NotFoundMedia) > 0 {
+		m := "Not found media file.\n"
+		for _, path := range unexpected.NotFoundMedia {
+			m += fmt.Sprintf("- %s\n", path)
+		}
+		messages = append(messages, m)
+	}
+	return fmt.Errorf("Unexpected analysis result\n%s", strings.Join(messages, "\n\n"))
 }
