@@ -42,6 +42,24 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 	return nil
 }
 
+func (porter *Porter) DryRun(sourceDir, destDir string) ([]string, error) {
+	result, err := porter.mediaMetadataRepo.AnalyzeAllMetadata(sourceDir)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := convertError(result.Unexpected); err != nil {
+		return nil, err
+	}
+
+	results := porter.backupStorage.DryCopy(result.Medias, destDir)
+	pathInformation := make([]string, 0, len(results))
+	for _, r := range results {
+		pathInformation = append(pathInformation, fmt.Sprintf("%s -> %s", r.From, r.To))
+	}
+	return pathInformation, err
+}
+
 func convertError(unexpected *domain.UnexpectedStruct) error {
 	if unexpected == nil {
 		return nil

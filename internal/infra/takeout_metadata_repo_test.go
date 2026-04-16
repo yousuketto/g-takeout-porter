@@ -255,7 +255,7 @@ func TestTakeoutMetadataRepo_AnalyzeAllMetadata_notFoundTakeoutDirectory(t *test
 	temp := t.TempDir()
 	files := map[string][]byte{
 		// media and metadata in dir1
-		filepath.Join("dir1", "Takeouts", "Google フォト", "2014", "photo1.jpg"):  []byte(""),
+		filepath.Join("dir1", "Takeouts", "Google フォト", "2014", "photo1.jpg"): []byte(""),
 	}
 	for path, content := range files {
 		fullPath := filepath.Join(temp, path)

@@ -44,6 +44,16 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 	return results, nil
 }
 
+func (storage *LocalStorage) DryCopy(sourceMetadata []domain.MediaMetadata, destDir string) []domain.DryCopiedResult {
+	results := make([]domain.DryCopiedResult, 0, len(sourceMetadata))
+	for _, metadata := range sourceMetadata {
+		timestamp := time.Unix(metadata.Timestamp, 0)
+		destPath := filepath.Join(destDir, timestamp.Format("200601"), filepath.Base(metadata.RelativePath))
+		results = append(results, domain.DryCopiedResult{metadata.RelativePath, destPath})
+	}
+	return results
+}
+
 func copyFile(src, dst string) error {
 	s, err := os.Open(src)
 	if err != nil {
