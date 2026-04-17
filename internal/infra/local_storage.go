@@ -18,12 +18,11 @@ func NewLocalStorage() *LocalStorage {
 func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir string) ([]domain.CopiedResult, error) {
 	destPaths := make([]string, 0, len(sourceMetadata))
 	for _, metadata := range sourceMetadata {
-		timestamp := time.Unix(metadata.Timestamp, 0)
-		destPath := filepath.Join(destDir, timestamp.Format("200601"), filepath.Base(metadata.RelativePath))
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		path := destPath(destDir, metadata)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			return nil, err
 		}
-		destPaths = append(destPaths, destPath)
+		destPaths = append(destPaths, path)
 	}
 
 	results := make([]domain.CopiedResult, 0, len(sourceMetadata))
@@ -50,11 +49,14 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 func (storage *LocalStorage) DryCopy(sourceMetadata []domain.MediaMetadata, destDir string) []domain.DryCopiedResult {
 	results := make([]domain.DryCopiedResult, 0, len(sourceMetadata))
 	for _, metadata := range sourceMetadata {
-		timestamp := time.Unix(metadata.Timestamp, 0)
-		destPath := filepath.Join(destDir, timestamp.Format("200601"), filepath.Base(metadata.RelativePath))
-		results = append(results, domain.DryCopiedResult{metadata.RelativePath, destPath})
+		results = append(results, domain.DryCopiedResult{metadata.RelativePath, destPath(destDir, metadata)})
 	}
 	return results
+}
+
+func destPath(destDir string, metadata domain.MediaMetadata) string {
+	timestamp := time.Unix(metadata.Timestamp, 0)
+	return filepath.Join(destDir, timestamp.Format("200601"), filepath.Base(metadata.RelativePath))
 }
 
 func copyFile(src, dst string) error {
