@@ -32,14 +32,17 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 		err := copyFile(metadata.RelativePath, path)
 		if err != nil {
 			fmt.Printf("Fail to copy '%s' to '%s': %v\n", metadata.RelativePath, path, err)
-			results = append(results, domain.CopiedResult{false, metadata})
-		} else {
-			results = append(results, domain.CopiedResult{true, metadata})
+			results = append(results, domain.CopiedResult{IsSuccess: false, Media: metadata})
+			continue
 		}
+
 		t := time.Unix(metadata.Timestamp, 0)
 		if err := os.Chtimes(path, t, t); err != nil {
-			return nil, err
+			fmt.Printf("Fail to set time for '%s': %v\n", path, err)
+			results = append(results, domain.CopiedResult{IsSuccess: false, Media: metadata})
+			continue
 		}
+		results = append(results, domain.CopiedResult{IsSuccess: true, Media: metadata})
 	}
 	return results, nil
 }
