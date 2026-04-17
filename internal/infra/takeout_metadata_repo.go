@@ -28,9 +28,9 @@ type metadataJson struct {
 func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.AnalysisResult, error) {
 	timestampMap := make(map[string]int64)
 	relativePathMap := make(map[string]string)
-	duplicatedMetadata := make([]string, 0)
-	duplicatedFiles := make([]string, 0)
-	notFoundMetadataPaths := make([]string, 0)
+	var duplicatedMetadata []string
+	var duplicatedFiles []string
+	var notFoundMetadataPaths []string
 
 	fallbackTimestampMap := make(map[string]int64)
 

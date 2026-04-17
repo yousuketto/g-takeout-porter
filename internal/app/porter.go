@@ -29,7 +29,7 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 	if err != nil {
 		return err
 	}
-	failedReulsts := make([]string, 0)
+	var failedReulsts []string
 	for _, result := range copiedResults {
 		if !result.IsSuccess {
 			failedReulsts = append(failedReulsts, result.Media.RelativePath)
@@ -64,7 +64,7 @@ func convertError(unexpected *domain.UnexpectedStruct) error {
 	if unexpected == nil {
 		return nil
 	}
-	messages := make([]string, 0)
+	var messages []string
 	if unexpected.DuplicatedMetadata != nil && len(unexpected.DuplicatedMetadata) > 0 {
 		m := "Duplicated metadata are found.\n"
 		for _, path := range unexpected.DuplicatedMetadata {
