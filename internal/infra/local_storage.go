@@ -6,17 +6,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
-type LocalStorage struct{}
+type LocalStorage struct {
+	numWorkers int
+}
 
 func NewLocalStorage() *LocalStorage {
-	return &LocalStorage{}
+	return &LocalStorage{numWorkers: 8}
 }
 
 func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir string) ([]domain.CopiedResult, error) {
-	destPaths := make([]string, 0, len(sourceMetadata))
+	totalLen := len(sourceMetadata)
+	destPaths := make([]string, 0, totalLen)
 	for _, metadata := range sourceMetadata {
 		path := destPath(destDir, metadata)
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -25,24 +29,44 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 		destPaths = append(destPaths, path)
 	}
 
-	results := make([]domain.CopiedResult, 0, len(sourceMetadata))
-	for i, metadata := range sourceMetadata {
-		path := destPaths[i]
-		err := copyFile(metadata.RelativePath, path)
-		if err != nil {
-			fmt.Printf("Fail to copy '%s' to '%s': %v\n", metadata.RelativePath, path, err)
-			results = append(results, domain.CopiedResult{IsSuccess: false, Media: metadata})
-			continue
-		}
+	results := make([]domain.CopiedResult, totalLen)
 
-		t := time.Unix(metadata.Timestamp, 0)
-		if err := os.Chtimes(path, t, t); err != nil {
-			fmt.Printf("Fail to set time for '%s': %v\n", path, err)
-			results = append(results, domain.CopiedResult{IsSuccess: false, Media: metadata})
-			continue
-		}
-		results = append(results, domain.CopiedResult{IsSuccess: true, Media: metadata})
+	jobs := make(chan int, totalLen)
+	for i := 0; i < totalLen; i++ {
+		jobs <- i
 	}
+	close(jobs)
+
+	numWorkers := storage.numWorkers
+	if totalLen < numWorkers {
+		numWorkers = totalLen
+	}
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				metadata := sourceMetadata[i]
+				path := destPaths[i]
+				err := copyFile(metadata.RelativePath, path)
+				if err != nil {
+					fmt.Printf("Fail to copy '%s' to '%s': %v\n", metadata.RelativePath, path, err)
+					results[i] = domain.CopiedResult{IsSuccess: false, Media: metadata}
+					continue
+				}
+
+				t := time.Unix(metadata.Timestamp, 0)
+				if err := os.Chtimes(path, t, t); err != nil {
+					fmt.Printf("Fail to set time for '%s': %v\n", path, err)
+					results[i] = domain.CopiedResult{IsSuccess: false, Media: metadata}
+					continue
+				}
+				results[i] = domain.CopiedResult{IsSuccess: true, Media: metadata}
+			}
+		}()
+	}
+	wg.Wait()
 	return results, nil
 }
 
