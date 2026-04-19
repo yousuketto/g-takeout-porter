@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-type TakeoutMetadataRepo struct{}
+type takeoutMetadataRepo struct{}
 
-func NewTakeoutMetadataRepo() *TakeoutMetadataRepo {
-	return &TakeoutMetadataRepo{}
+func NewTakeoutMetadataRepo() *takeoutMetadataRepo {
+	return &takeoutMetadataRepo{}
 }
 
 type metadataJson struct {
@@ -25,7 +25,7 @@ type metadataJson struct {
 	} `json:"photoTakenTime"`
 }
 
-func (repo *TakeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.AnalysisResult, error) {
+func (repo *takeoutMetadataRepo) AnalyzeAllMetadata(dirPath string) (*domain.AnalysisResult, error) {
 	timestampMap := make(map[string]int64)
 	relativePathMap := make(map[string]string)
 	var duplicatedMetadata []string
