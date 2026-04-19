@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-type LocalStorage struct {
+type localStorage struct {
 	numWorkers int
 }
 
-func NewLocalStorage() *LocalStorage {
-	return &LocalStorage{numWorkers: 8}
+func NewLocalStorage(numWorkers int) *localStorage {
+	return &localStorage{numWorkers: 8}
 }
 
-func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir string) ([]domain.CopiedResult, error) {
+func (storage *localStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir string) ([]domain.CopiedResult, error) {
 	totalLen := len(sourceMetadata)
 	destPaths := make([]string, 0, totalLen)
 	for _, metadata := range sourceMetadata {
@@ -70,7 +70,7 @@ func (storage *LocalStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir
 	return results, nil
 }
 
-func (storage *LocalStorage) DryCopy(sourceMetadata []domain.MediaMetadata, destDir string) []domain.DryCopiedResult {
+func (storage *localStorage) DryCopy(sourceMetadata []domain.MediaMetadata, destDir string) []domain.DryCopiedResult {
 	results := make([]domain.DryCopiedResult, 0, len(sourceMetadata))
 	for _, metadata := range sourceMetadata {
 		results = append(results, domain.DryCopiedResult{metadata.RelativePath, destPath(destDir, metadata)})
