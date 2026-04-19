@@ -15,7 +15,10 @@ type localStorage struct {
 }
 
 func NewLocalStorage(numWorkers int) *localStorage {
-	return &localStorage{numWorkers: 8}
+	if numWorkers <= 0 {
+		numWorkers = 1
+	}
+	return &localStorage{numWorkers: numWorkers}
 }
 
 func (storage *localStorage) Copy(sourceMetadata []domain.MediaMetadata, destDir string) ([]domain.CopiedResult, error) {
