@@ -6,17 +6,17 @@ import (
 	"strings"
 )
 
-type Porter struct {
+type porter struct {
 	mediaMetadataRepo domain.MediaMetadataRepo
 	backupStorage     domain.BackupStorage
 }
 
-func NewPorter(mediaMetadataRepo domain.MediaMetadataRepo, backupStorage domain.BackupStorage) *Porter {
-	return &Porter{mediaMetadataRepo, backupStorage}
+func NewPorter(mediaMetadataRepo domain.MediaMetadataRepo, backupStorage domain.BackupStorage) *porter {
+	return &porter{mediaMetadataRepo, backupStorage}
 }
 
-func (porter *Porter) Run(sourceDir, destDir string) error {
-	result, err := porter.mediaMetadataRepo.AnalyzeAllMetadata(sourceDir)
+func (p *porter) Run(sourceDir, destDir string) error {
+	result, err := p.mediaMetadataRepo.AnalyzeAllMetadata(sourceDir)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 		return err
 	}
 
-	copiedResults, err := porter.backupStorage.Copy(result.Medias, destDir)
+	copiedResults, err := p.backupStorage.Copy(result.Medias, destDir)
 	if err != nil {
 		return err
 	}
@@ -42,8 +42,8 @@ func (porter *Porter) Run(sourceDir, destDir string) error {
 	return nil
 }
 
-func (porter *Porter) DryRun(sourceDir, destDir string) ([]string, error) {
-	result, err := porter.mediaMetadataRepo.AnalyzeAllMetadata(sourceDir)
+func (p *porter) DryRun(sourceDir, destDir string) ([]string, error) {
+	result, err := p.mediaMetadataRepo.AnalyzeAllMetadata(sourceDir)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (porter *Porter) DryRun(sourceDir, destDir string) ([]string, error) {
 		return nil, err
 	}
 
-	results := porter.backupStorage.DryCopy(result.Medias, destDir)
+	results := p.backupStorage.DryCopy(result.Medias, destDir)
 	pathInformation := make([]string, 0, len(results))
 	for _, r := range results {
 		pathInformation = append(pathInformation, fmt.Sprintf("%s -> %s", r.From, r.To))
